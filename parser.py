@@ -80,7 +80,7 @@ class PhpMyAdminScraper:
         # Refresh token after login
         resp = self.session.get(self.login_link)
         self.token = self.get_token(resp.text, 'after_login')
-        print(f'New Token: {self.token}')
+        print(f'Your New Token: {self.token}')
 
     def get_users_table(self):
         headers_with_referer = {
@@ -94,7 +94,7 @@ class PhpMyAdminScraper:
             )
         table_url = self.table_link + f'&token={self.token}'
         resp = self.session.get(table_url, headers=headers_with_referer)
-        print(f'Table: {resp.status_code}, Length: {len(resp.text)}')
+        print(f'Table status is: {resp.status_code}')
         self.debugger('debugger.html', resp.text)
 
         soup = BeautifulSoup(resp.text, 'html.parser')

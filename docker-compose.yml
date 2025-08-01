@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  scraper:
+    build: .
+    image: app:scrape_test_task
+    container_name: scrape_test_task_container
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    command: python parser.py
