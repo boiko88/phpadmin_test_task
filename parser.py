@@ -32,10 +32,14 @@ class PhpMyAdminScraper:
         self.session = requests.Session()
         self.token = ''
 
+    # Saves an HTML file to make sure data you try to scrape is reached
     def debugger(self, filename: str, html: str):
-        with open(filename, 'w', encoding='utf-8') as file:
-            file.write(html)
-        print(f'Saved HTML to file: {filename}')
+        try:
+            with open(filename, 'w', encoding='utf-8') as file:
+                file.write(html)
+            print(f'Saved HTML to file: {filename}')
+        except Exception as e:
+            print(f'There was an {e} error')
 
     def get_token(self, html: str, context: str) -> str:
         soup = BeautifulSoup(html, 'html.parser')
@@ -47,9 +51,12 @@ class PhpMyAdminScraper:
         return token_input['value']
 
     def login(self):
-        resp = self.session.get(self.login_link)
-        self.token = self.get_token(resp.text, 'before_login')
-        print(f'Token for login: {self.token}')
+        try:
+            resp = self.session.get(self.login_link)
+            self.token = self.get_token(resp.text, 'before_login')
+            print(f'Token for login: {self.token}')
+        except requests.RequestException as e:
+            print(f'There was an {e} error')
 
         login_payload = {
             'pma_username': self.username,
@@ -59,7 +66,7 @@ class PhpMyAdminScraper:
             'lang': 'ru',
             'token': self.token
         }
-
+        # Mimic real browser
         headers = {
             'User-Agent': 'Mozilla/5.0',
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -83,6 +90,7 @@ class PhpMyAdminScraper:
         print(f'Your New Token: {self.token}')
 
     def get_users_table(self):
+        # Mimic real browser
         headers_with_referer = {
             'User-Agent': 'Mozilla/5.0',
             'Referer': self.login_link
@@ -98,19 +106,27 @@ class PhpMyAdminScraper:
         self.debugger('debugger.html', resp.text)
 
         soup = BeautifulSoup(resp.text, 'html.parser')
+        # Look for the table that contains the results
         table = soup.find('table', {'class': 'table_results'})
 
         if not table:
             print('Users table not found')
             exit()
 
+        # Extract rows from the table, skip the header row
         rows = table.find_all('tr')[1:]
         data = []
+
+        # Column positions (may vary by phpMyAdmin setup)
+        ID_COLUMN_INDEX = -2
+        NAME_COLUMN_INDEX = -1
+        MIN_EXPECTED_COLUMNS = 2
+
         for r in rows:
             cols = r.find_all('td')
-            if len(cols) >= 2:
-                id_val = cols[-2].get_text(strip=True)
-                name_val = cols[-1].get_text(strip=True)
+            if len(cols) >= MIN_EXPECTED_COLUMNS:
+                id_val = cols[ID_COLUMN_INDEX].get_text(strip=True)
+                name_val = cols[NAME_COLUMN_INDEX].get_text(strip=True)
                 data.append([id_val, name_val])
 
         print('Users Table:\n')
@@ -118,16 +134,20 @@ class PhpMyAdminScraper:
 
 
 if __name__ == '__main__':
-    username = os.getenv('PMA_LOGIN')
-    password = os.getenv('PMA_PASSWORD')
+    try:
+        username = os.getenv('PMA_LOGIN')
+        password = os.getenv('PMA_PASSWORD')
 
-    if not username or not password:
-        print('PMA_LOGIN or PMA_PASSWORD is not set in .env file.')
-        exit()
+        if not username or not password:
+            print('PMA_LOGIN or PMA_PASSWORD is not set in .env file.')
+            exit()
 
-    scraper = PhpMyAdminScraper(
-        username=username,
-        password=password
-    )
-    scraper.login()
-    scraper.get_users_table()
+        scraper = PhpMyAdminScraper(
+            username=username,
+            password=password
+        )
+        scraper.login()
+        scraper.get_users_table()
+        
+    except Exception as e:
+        print(f'There was an {e} error')
